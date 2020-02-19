@@ -52,12 +52,168 @@ class MQCounter {
         x.clear();
         x.resize(m);
     }
+    void init(int m_) {
+        m = m_;
+        x.clear();
+        x.resize(m);        
+    }
     int m;
     double q;
     vector<int> x;
     geometric_distribution<int> dist;
     default_random_engine gen;
 
+    void setxi(int i, int v) {
+        x[i] = v;
+    }
+
+    // MSPE
+    double mspe() {
+        // hope it work
+        double har = 0; // the part using harmonic sum as the statistic
+        for(int j=0; j<m; j++) {
+            har += pow(1.0/q, x[j]+1);
+        }
+        double temp = m;
+        har = temp * (temp-1) *(q-1.0) / har / q;
+        
+        // the shape part
+        // first construct a categarical random variable
+        vector<double> ths(m); // so if a random number is between ths[m] and ths[m+1], then it is categray m
+        vector<double> tempv(m);
+        double xmax=0;
+        for(int j=0; j<m; j++) {
+            if(xmax < x[j]) 
+                xmax = x[j];
+        }
+        double temp2 = 0;
+        for(int j=0; j<m; j++) {
+            temp2 += pow(q, xmax-x[j]);
+            tempv[j] = temp2;
+        }
+        for(int j=0; j<m; j++) {
+            ths[j] = tempv[j]/temp2*RAND_MAX;
+        }
+
+        int ne = 10000; // number of experiment
+        int mb = 2*m; // number of summations
+        double nomin =0;
+        double denomin = 0;
+        vector<double> ex(m); // x for experiment
+        for(int i=0; i<ne; i++) {
+            // cout << i << endl;
+            double qk = 1;
+            double mk1 = 1;
+            double mk2 = 1;
+            double phik = 1;
+            fill(ex.begin(), ex.end(), 0);
+            for (int k=0; k<mb; k++) {
+                // qk for 1/q^k
+                // mk1 for {m+k-1 \choose k}
+                // mk2 for {m+k-2 \choose k}
+                // phik for \phi(k;p)
+                nomin += qk * mk1 * phik;
+                denomin += qk * mk2 * phik;
+
+                double draw = rand(); // draw your card!
+                int di=-1;
+                for(int j=0; j<m; j++) {
+                    if(draw < ths[j]) {
+                        di = j;
+                        break;
+                    }
+                }
+                if(di == -1) {
+                    // cerr << "what?" << endl;
+                    // exit(-1);
+                    di = m-1;
+                }
+
+                // update
+                qk *= (q-1.0) / q;
+                mk1 *= (double)(m+k)/(k+1);
+                mk2 *= (double)(m+k-1)/(k+1);
+                phik *= (double)(ex[di]+1)/(ex[di]+2);
+                ex[di] += 1;
+            }
+        }
+        cout << nomin / denomin << endl;
+        return har * nomin / denomin;
+    }
+
+
+    // MSPEw weighted version of min square error
+    double mspew() {
+        double har = 0; // the part using harmonic sum as the statistic
+        for(int j=0; j<m; j++) {
+            har += pow(1.0/q, x[j]+1);
+        }
+        double temp = m;
+        har = temp * (temp-2) *(q-1.0)  / har / q;
+        
+        // the shape part
+        // first construct a categarical random variable
+        vector<double> ths(m); // so if a random number is between ths[m] and ths[m+1], then it is categray m
+        vector<double> tempv(m);
+        double xmax=0;
+        for(int j=0; j<m; j++) {
+            if(xmax < x[j]) 
+                xmax = x[j];
+        }
+        double temp2 = 0;
+        for(int j=0; j<m; j++) {
+            temp2 += pow(q, xmax-x[j]);
+            tempv[j] = temp2;
+        }
+        for(int j=0; j<m; j++) {
+            ths[j] = tempv[j]/temp2*RAND_MAX;
+        }
+
+        int ne = 10000; // number of experiment
+        int mb = 2*m; // number of summations
+        double nomin =0;
+        double denomin = 0;
+        vector<double> ex(m); // x for experiment
+        for(int i=0; i<ne; i++) {
+            // cout << i << endl;
+            double qk = 1;
+            double mk2 = 1;
+            double mk3 = 1;
+            double phik = 1;
+            fill(ex.begin(), ex.end(), 0);
+            for (int k=0; k<mb; k++) {
+                // qk for (q-1)^k/q^k
+                // mk1 for {m+k-1 \choose k}
+                // mk2 for {m+k-2 \choose k}
+                // phik for \phi(k;p)
+                nomin += qk * mk2 * phik;
+                denomin += qk * mk3 * phik;
+
+                double draw = rand(); // draw your card!
+                int di=-1;
+                for(int j=0; j<m; j++) {
+                    if(draw < ths[j]) {
+                        di = j;
+                        break;
+                    }
+                }
+                if(di == -1) {
+                    // cerr << "what?" << endl;
+                    // exit(-1);
+                    di = m-1;
+                }
+
+                // update
+                qk *= (q-1.0) / q;
+                mk2 *= (double)(m+k-1)/(k+1);
+                mk3 *= (double)(m+k-2)/(k+1);
+                phik *= (double)(ex[di]+1)/(ex[di]+2);
+                ex[di] += 1;
+            }
+        }
+        cout << nomin / denomin << endl;
+        return har * nomin / denomin;
+    }
     // HyperLoglog
     double hll() {
         // only for q = 2 and m >= 128

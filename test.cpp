@@ -6,16 +6,21 @@
 using namespace std;
 
 int main() {
-    int m = 1000;
+    int m = 50;
+    int n = 800000;
+    int k = 500;
+    
     MQCounter mq(m,2);
-    for(int j=0; j<1; j++) {
-        mq.init();
-        mq.add(1e8);
+    for(m = 64; m < 200; m++) {
+        mq.init(m);
         for(int i=0; i<m; i++) {
-            // cout << mq.x[i] << "\t";
+            mq.setxi(i, 14);
         }
-        cout << mq.mle_bs() << " | hll: " << mq.hll();
-        cout << endl;
+        for(int i=m/2; i<m; i++) {
+            mq.setxi(i, 17);
+        }
+        cout << m << endl;
+        mq.mspe();
     }
     return 0;
 }
